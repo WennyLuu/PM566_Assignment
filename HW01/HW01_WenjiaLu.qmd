@@ -10,6 +10,7 @@ format:
 ### Q1 Read in data using data.table() and Conduct EDA checklist items 2-4 ###
 
 ## Download and read in data
+setwd("~/Desktop/PM566/DATA") 
 pm2.5_2002 <- data.table::fread("ad_viz_plotval_data2002.csv")
 pm2.5_2022 <- data.table::fread("ad_viz_plotval_data2022.csv")
 
@@ -133,7 +134,7 @@ Daily_PM2.5_Concentration <- (two_years_pm2.5$`Daily PM2.5`)
 # Boxplot
 two_years_pm2.5[!is.na(year)] %>%
 ggplot() +
-  geom_boxplot(mapping = aes(x = year, y = Daily_PM2.5_Concentration, fill=year))
+  geom_boxplot(mapping = aes(x = year, y = Daily_PM2.5_Concentration, group = year))
 # Histogram
 class(two_years_pm2.5$year) = "character"
 ggplot(two_years_pm2.5, aes(x = Daily_PM2.5_Concentration)) +
@@ -157,7 +158,7 @@ County = group_by(PM2.5_Country, year, COUNTY) %>%
 Daily_PM2.5_Concentration <- (County$`Daily PM2.5`)
 # Boxplot
 ggplot(County) +
-  geom_boxplot(mapping = aes(x = year, y = Daily_PM2.5_Concentration, fill=year))
+  geom_boxplot(mapping = aes(x = year, y = Daily_PM2.5_Concentration, group = year))
 # Summary statistics
 tapply(County$`Daily PM2.5`, County$year, summary)
 # Conclusion
@@ -171,7 +172,7 @@ Site = group_by(PM2.5_LA, year, SITE) %>%
 Daily_PM2.5_Concentration <- (Site$`Daily PM2.5`)
 # Boxplot
 ggplot(Site) +
-  geom_boxplot(mapping = aes(x = year, y = Daily_PM2.5_Concentration, fill=year))
+  geom_boxplot(mapping = aes(x = year, y = Daily_PM2.5_Concentration, group = year))
 # Summary statistics
 tapply(Site$`Daily PM2.5`, Site$year, summary)
 # Conclusion
