@@ -1,0 +1,170 @@
+---
+title: "PM566 Assinment03"
+author: "Wenjia Lu"
+format:
+  html:
+    embed-resources: true
+---
+
+### Set packages ###
+
+```{r}
+
+library(data.table)
+library(dplyr)
+library(tidyverse)
+library(dtplyr)
+library(knitr)
+library(ggplot2)
+library(rvest)
+library(httr)
+library(xml2)
+library(stringr)
+library(tidytext)
+library(dplyr)
+
+```
+
+###  Text Mining  ###
+
+## Q1. Tokenize the abstracts and count the number of each token. Do you see anything interesting? Does removing stop words change what tokens appear as the most frequent? What are the 5 most common tokens for each search term after removing stopwords?
+
+```{r}
+
+if (!file.exists("abstracts.csv")) {
+  download.file(
+    url = "https://raw.githubusercontent.com/USCbiostats/data-science-data/master/03_pubmed/pubmed.csv", "abstracts.csv", method = "libcurl", timeout  = 60)
+}
+abs= read.csv("abstracts.csv")
+
+str(abs)
+table(abs$term)
+
+abs= as_tibble(abs)
+
+```
+
+** The dataset contains 3241 abstracts from articles across 5 search terms.
+
+```{r}
+
+abs %>%
+  unnest_tokens(word, abstract) %>%
+  count(word, sort = TRUE) %>%
+  top_n(15, n) %>%
+  ggplot(aes(n, fct_reorder(word, n))) +
+  geom_col()
+
+```
+
+** For the top 15 common tokens, only "covid", "19", "patients", "cancer", and "prostate" are meaningful. Others are stop words and do not convey any interesting information.
+
+```{r}
+
+abs %>%
+  unnest_tokens(word, abstract) %>%
+  anti_join(stop_words, by = c("word")) %>%
+  count(word, sort = TRUE) %>%
+  filter( !grepl(pattern = "^[0-9]+$", x = word)) %>%
+  top_n(15, n) %>%
+  ggplot(aes(n, fct_reorder(word, n))) +
+  geom_col()
+
+```
+
+** After removing stop words and numbers, the top 15 common tokens changed drastically. Now all those tokens have meanings and can help us to know these abstracts better. The most frequent word is "covid", indicating that most of these researches were about COVID-19.
+
+```{r}
+
+abs %>%
+  unnest_tokens(word, abstract) %>%
+  group_by(term) %>%
+  count(word, sort = TRUE) %>%
+  filter( !(word %in% stop_words$word) & !grepl(pattern = "^[0-9]+$", x = word)) %>%
+  top_n(5, n) %>%
+  arrange(term, desc(n)) %>%
+knitr::kable()
+
+```
+
+** After removing stopwords, the 5 most common tokens for each term are:
+
+1)  covid: 
+covid, patients, disease, pandemic, coronavirus / health (both appeared 647 times)
+
+2)  cystic fibrosis:
+fibrosis, cystic, cf, patients, disease
+
+3)  meningitis:
+patients, meningitis, meningeal, csf, clinical
+
+4)  preeclampsia:
+pre, eclampsia, preeclampsia, women, pregnancy
+
+5)  prostate cancer:
+cancer, prostate, patients, treatment, disease
+
+
+## Q2. Tokenize the abstracts into bigrams. Find the 10 most common bigram and visualize them with ggplot2. 
+
+```{r}
+
+abs %>%
+  unnest_ngrams(bigram, abstract, n=2) %>%
+  count(bigram, sort = TRUE) %>%
+  top_n(10, n) %>%
+  ggplot(aes(n, fct_reorder(bigram, n))) +
+  geom_col()
+
+```
+
+** Here we can observe that most common bigrams were about COVID-19, Prostate cancer, and Preeclampsia.
+
+
+## Q3. Calculate the TF-IDF value for each word-search term combination (here you want the search term to be the "document"). What are the 5 tokens from each search term with the highest TF-IDF value? How are the results different from the answers you got in question 1?
+
+```{r}
+
+abs %>%
+  unnest_tokens(word, abstract) %>%
+  group_by(term) %>%
+  count(word, term, sort = TRUE) %>%
+  top_n(5, n) %>%
+  bind_tf_idf(word, term, n) %>%
+  arrange(term, desc(tf_idf)) %>%
+knitr::kable()
+
+```
+
+** There were lots of meaningless and redundant stop words in the table, so better get rid of them.
+
+```{r}
+
+abs %>%
+  unnest_tokens(word, abstract) %>%
+  group_by(term) %>%
+  count(word, term, sort = TRUE) %>%
+  filter( !(word %in% stop_words$word) & !grepl(pattern = "^[0-9]+$", x = word)) %>%
+  top_n(5, n) %>%
+  bind_tf_idf(word, term, n) %>%
+  arrange(term, desc(tf_idf)) %>%
+knitr::kable()
+
+```
+
+1)  covid: 
+covid, pandemic, coronavirus / health (both TF-IDF values equal 0.0826106), patients, disease
+
+2)  cystic fibrosis:
+fibrosis, cystic, cf, disease, patients
+
+3)  meningitis:
+meningitis, meningeal, csf, clinial, patients
+
+4)  preeclampsia:
+pre, eclampsia, preeclampsia, women, pregnancy
+
+5)  prostate cancer:
+cancer，prostate, treatment, disease, patients
+
+** The order of top 5 common tokens were changed for each term. TF-IDF value not only focuses on the frequency of words but also provides the importance of the words. For example, although "patients" were appearing very frequently but its ranking here was lower than before for each term. Thus, the important tokens were ranked higher and the key information could be better presented by this method.
